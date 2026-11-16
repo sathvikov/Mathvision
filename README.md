@@ -1,101 +1,156 @@
-# MathVision — Handwritten Mathematical Expression Recognition
+# MathVision — Handwritten Mathematical Expression Recognition & Solver
 
-> **Academic Mini-Project** | Neural Networks and Deep Learning (NNDL)
+> **Deep Learning & Computer Vision System** | End-to-end local CNN inference & symbolic algebraic solver.
 
-MathVision is an end-to-end deep learning system that recognizes handwritten mathematical equations from interactive canvas drawings or uploaded images, reconstructs the expressions using spatial symbol segmentation, and solves them locally using symbolic computation.
+MathVision is an end-to-end intelligent system that recognizes handwritten mathematical equations from interactive canvas drawings or uploaded images, reconstructs the expressions using spatial symbol segmentation, and solves them locally using symbolic computation.
 
-## Architecture
+---
 
-The project has been refactored into a decoupled, production-ready architecture:
+## 🌟 Key Features
 
-- **Frontend (Vercel):** A Next.js (React + Tailwind CSS) application providing a premium, interactive user interface. It captures drawing input from an HTML5 canvas and visualizes the math pipeline.
-- **Backend API:** A Python FastAPI service hosting the local MathVision CNN inference pipeline and SymPy solver.
+- **Interactive Drawing Canvas**: Multi-touch HTML5 canvas with stroke-width options (Fine, Medium, Thick), responsive coordinate scaling, and multi-level Undo support.
+- **Quick-Try Presets**: 1-click test gallery containing real handwritten equations (`2x + 5 = 15`, `3x - 7 = 11`, `7x = 35`, `4x + 2 = 18`, `12 + 8 = 20`, `20 ÷ 4 = 5`).
+- **Offline Custom CNN Classifier**: Lightweight ~2.9 MB model trained on HASYv2 and CROHME datasets achieving 96.5% test accuracy across 16 mathematical symbol classes (`0–9`, `+`, `−`, `×`, `÷`, `=`, `x`).
+- **Step-by-Step Symbolic Solver**: Powered by SymPy — generates verified algebraic derivations for linear equations and checks arithmetic validity without arbitrary `eval()`.
+- **Live Recognition Inspection**: Displays bounding contours, segmented symbol crops, and individual classification confidence percentages.
+- **Dual Interfaces**:
+  - Modern **Next.js 16 + Tailwind CSS** web application (prepared for Vercel).
+  - Standalone **Streamlit** dashboard for rapid desktop experimentation (`python run.py`).
 
-> **Crucially:** CNN inference is local to the deployed backend. No external AI API (like OpenAI or Gemini) is used.
+---
 
-## Features
+## 🏗 System Architecture
 
-- **Draw & Upload:** Draw an equation natively in the browser or upload an image.
-- **Local Symbol Recognition:** A custom CNN predicts each segmented handwritten symbol.
-- **Math Solver:** SymPy performs symbolic solving and algebraic step generation.
-- **Visual Pipeline:** UI presents the preprocessing, recognition confidence, and solve path step-by-step.
-
-## ML Pipeline
-
+```
 User Input (Canvas / Image)
-↓
-Image Preprocessing (Grayscale, Noise Removal, Binarization)
-↓
-Symbol Segmentation (Contour Detection, Spatial Sorting, Bounding Boxes)
-↓
-CNN Classification (Custom 28x28 Handwritten Symbol Classifier)
-↓
-Equation Reconstruction (Visual Symbol to Math Operator Mapping)
-↓
-Mathematical Parsing & Solving (Local SymPy Parsing)
-↓
-JSON API Response → Next.js Visual Output
+            ↓
+Image Preprocessing (Grayscale, Adaptive Thresholding, Noise Removal via OpenCV)
+            ↓
+Spatial Symbol Segmentation (Contour Detection, Scale Normalization to 28×28)
+            ↓
+Custom CNN Inference (TensorFlow / Keras 3-layer Convolutional Classifier)
+            ↓
+Visual Expression Reconstruction (Left-to-Right Ordering & Operator Mapping)
+            ↓
+Symbolic Mathematical Solver (SymPy Equation Parser & Step Generator)
+            ↓
+JSON API Response → Visual UI with Step-by-Step Proof
+```
 
-## Tech Stack
+---
 
-- **Frontend:** Next.js, React, Tailwind CSS, TypeScript
-- **Backend:** Python, FastAPI, Uvicorn
-- **Machine Learning:** TensorFlow/Keras CNN (Local weights, ~3 MB)
-- **Computer Vision:** OpenCV, NumPy, Pillow
-- **Math Engine:** SymPy
+## 🚀 Quick Start (Local Setup)
 
-## Local Development
+### Prerequisites
+- Python 3.11+
+- Node.js 18+ and npm
 
-### 1. Run the Backend API
+### 1. Set Up the Python Virtual Environment & Backend
 ```bash
-# Activate your virtual environment
-pip install -r backend/requirements.txt
-# Start the FastAPI server
+# Create and activate virtual environment
+python3 -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Run the test suite (all 24 tests)
+pytest -v
+
+# Start the FastAPI backend server (port 8000)
 uvicorn backend.api:app --reload --port 8000
 ```
 
-### 2. Run the Frontend UI
+### 2. Set Up and Run the Next.js Frontend
 ```bash
+# In a new terminal tab:
 cd frontend
 npm install
 npm run dev
 ```
-Open `http://localhost:3000` to interact with MathVision.
+Open **[http://localhost:3000](http://localhost:3000)** in your browser.
 
-## Vercel Deployment
+### 3. Alternative: Run the Streamlit Dashboard
+```bash
+python run.py
+```
+Open **[http://localhost:8501](http://localhost:8501)**.
 
-The frontend is ready to be deployed to Vercel:
-1. Connect this repository to Vercel.
-2. Set the **Framework Preset** to Next.js.
-3. Set the **Root Directory** to `frontend`.
-4. Add the Environment Variable `NEXT_PUBLIC_API_URL` pointing to your deployed FastAPI backend (e.g. `https://mathvision-api.onrender.com/api`).
-5. Deploy.
+---
 
-## Backend Deployment
+## 🌐 Cloud Deployment
 
-Due to Vercel Serverless Function size limits (250MB uncompressed) which TensorFlow exceeds, the backend must be deployed to a container or VM provider (e.g. Render, Railway, Fly.io):
-1. Point your host to the repository.
-2. Set the build command to `pip install -r backend/requirements.txt`.
-3. Set the start command to `uvicorn backend.api:app --host 0.0.0.0 --port $PORT`.
+### 1. Deploy Frontend to Vercel
+1. Push this repository to GitHub.
+2. In [Vercel](https://vercel.com), import your repository.
+3. Configure settings:
+   - **Framework Preset**: `Next.js`
+   - **Root Directory**: `frontend`
+   - **Build Command**: `npm run build`
+4. Add the Environment Variable:
+   - `NEXT_PUBLIC_API_URL`: URL of your deployed backend (e.g. `https://your-mathvision-api.onrender.com/api`).
+5. Click **Deploy**.
 
-## API Endpoints
+### 2. Deploy Backend API to Render (or Railway / Fly.io)
+Because the backend includes TensorFlow (~250MB), deploy it as a Web Service on Render:
+1. Create a new **Web Service** in Render and connect your GitHub repository.
+2. Configure settings:
+   - **Environment**: `Python`
+   - **Build Command**: `pip install -r backend/requirements.txt`
+   - **Start Command**: `uvicorn backend.api:app --host 0.0.0.0 --port $PORT`
+   - **Health Check Path**: `/api/health`
+3. Add Environment Variable:
+   - `CORS_ALLOW_ORIGINS`: Comma-separated list of your frontend URLs (e.g., `https://your-app.vercel.app,http://localhost:3000`).
 
-- `GET /api/health` — Check if the ML model is loaded and backend is online.
-- `GET /api/model-info` — Returns CNN metrics and classes.
-- `POST /api/solve` — Submit an image for end-to-end inference and solving.
+*(Alternatively, Render Blueprint `render.yaml` is pre-configured in this repository).*
 
-## Model
+---
 
-The CNN model size is 2.9 MB (`models/mathvision_cnn.keras`).
-It supports classes: `0-9`, `+`, `-`, `×`, `÷`, `=`, `x`.
-The inference logic runs entirely offline and local to the backend server.
+## 📡 API Reference
 
-## Example
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/api/health` | Service health status and model availability |
+| `GET` | `/api/model-info` | CNN model architecture, vocabulary, and test metrics |
+| `POST` | `/api/solve` | Multipart image upload for segmentation, recognition, and solving |
 
-Testing `2x + 5 = 15` yields a JSON response outlining the equation `2x + 5 = 15` and the SymPy-solved root `x = 5`, along with confidence scores for each recognized symbol.
+### Example `/api/solve` Response:
+```json
+{
+  "equation": "2x+5=15",
+  "solution": "x = 5",
+  "confidence": 0.997,
+  "inference_time_ms": 370,
+  "symbols": [
+    {"symbol": "2", "confidence": 1.0},
+    {"symbol": "x", "confidence": 0.98},
+    {"symbol": "+", "confidence": 1.0},
+    {"symbol": "5", "confidence": 1.0},
+    {"symbol": "=", "confidence": 1.0},
+    {"symbol": "1", "confidence": 1.0},
+    {"symbol": "5", "confidence": 1.0}
+  ],
+  "steps": [
+    {
+      "operation": "Subtract 5 from both sides",
+      "before": "2x + 5 = 15",
+      "after": "2x = 10"
+    },
+    {
+      "operation": "Divide both sides by 2",
+      "before": "2x = 10",
+      "after": "x = 5"
+    }
+  ]
+}
+```
 
-## Limitations
+---
 
-- V1 vocabulary only handles single-line equations and a single variable `x`.
-- Segmentation relies on clear, connected pen strokes.
-- Backend deployment requires a host with >500MB memory due to TensorFlow's footprint.
+## 🧪 Testing
+
+The test suite covers model loading, contour segmentation, scale invariance, symbol prediction, step generation, and edge cases:
+```bash
+pytest -v
+```
+All **24 tests** execute and verify deterministically without external network calls.

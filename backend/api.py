@@ -18,6 +18,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 ROOT = Path(__file__).resolve().parents[1]
+os.environ.setdefault("KERAS_HOME", str(ROOT / ".keras"))
 MODEL_PATH = ROOT / "models" / "mathvision_cnn.keras"
 METRICS_PATH = ROOT / "models" / "metrics.json"
 
