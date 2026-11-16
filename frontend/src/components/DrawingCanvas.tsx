@@ -17,13 +17,13 @@ export default function DrawingCanvas({
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
-  const [brushSize, setBrushSize] = useState<number>(5);
+  const [brushSize, setBrushSize] = useState<number>(7);
   const [history, setHistory] = useState<ImageData[]>([]);
 
   const initCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext("2d");
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
     if (!ctx) return;
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -34,22 +34,21 @@ export default function DrawingCanvas({
     initCanvas();
   }, [initCanvas]);
 
-  // Load external image onto canvas if requested (for presets)
+  // Load external image onto canvas (for presets)
   useEffect(() => {
     if (!initialImageUrl) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext("2d");
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
     if (!ctx) return;
 
     const img = new Image();
-    img.crossOrigin = "anonymous";
     img.onload = () => {
       ctx.fillStyle = "#ffffff";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       const hRatio = canvas.width / img.width;
       const vRatio = canvas.height / img.height;
-      const ratio = Math.min(hRatio, vRatio) * 0.88;
+      const ratio = Math.min(hRatio, vRatio) * 0.85;
       const centerShiftX = (canvas.width - img.width * ratio) / 2;
       const centerShiftY = (canvas.height - img.height * ratio) / 2;
       ctx.drawImage(
@@ -63,11 +62,15 @@ export default function DrawingCanvas({
         img.width * ratio,
         img.height * ratio
       );
-      const snapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      setHistory([snapshot]);
-      canvas.toBlob((blob) => {
-        onDrawEnd(blob);
-      }, "image/png");
+      try {
+        const snapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        setHistory([snapshot]);
+        canvas.toBlob((blob) => {
+          if (blob) onDrawEnd(blob);
+        }, "image/png");
+      } catch (err) {
+        console.warn("Could not capture preset snapshot:", err);
+      }
     };
     img.src = initialImageUrl;
   }, [initialImageUrl, onDrawEnd]);
@@ -82,42 +85,33 @@ export default function DrawingCanvas({
   const saveState = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext("2d");
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
     if (!ctx) return;
     const snapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
     setHistory((prev) => [...prev.slice(-15), snapshot]);
   };
 
-  const getCanvasCoords = (e: React.MouseEvent | React.TouchEvent) => {
+  const getCanvasCoords = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
     const rect = canvas.getBoundingClientRect();
-    let clientX = 0;
-    let clientY = 0;
-    if ("touches" in e) {
-      if (e.touches.length > 0) {
-        clientX = e.touches[0].clientX;
-        clientY = e.touches[0].clientY;
-      }
-    } else {
-      clientX = (e as React.MouseEvent).clientX;
-      clientY = (e as React.MouseEvent).clientY;
-    }
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
     return {
-      x: (clientX - rect.left) * scaleX,
-      y: (clientY - rect.top) * scaleY,
+      x: (e.clientX - rect.left) * scaleX,
+      y: (e.clientY - rect.top) * scaleY,
     };
   };
 
-  const startDrawing = (e: React.MouseEvent | React.TouchEvent) => {
-    e.preventDefault();
+  const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext("2d");
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
     if (!ctx) return;
 
+    try {
+      canvas.setPointerCapture(e.pointerId);
+    } catch {}
     saveState();
     setIsDrawing(true);
     ctx.beginPath();
@@ -125,12 +119,11 @@ export default function DrawingCanvas({
     ctx.moveTo(x, y);
   };
 
-  const draw = (e: React.MouseEvent | React.TouchEvent) => {
-    e.preventDefault();
+  const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (!isDrawing) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext("2d");
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
     if (!ctx) return;
 
     const { x, y } = getCanvasCoords(e);
@@ -143,12 +136,15 @@ export default function DrawingCanvas({
     ctx.stroke();
   };
 
-  const stopDrawing = () => {
+  const handlePointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (!isDrawing) return;
     setIsDrawing(false);
 
     const canvas = canvasRef.current;
     if (canvas) {
+      try {
+        canvas.releasePointerCapture(e.pointerId);
+      } catch {}
       canvas.toBlob((blob) => {
         onDrawEnd(blob);
       }, "image/png");
@@ -163,7 +159,7 @@ export default function DrawingCanvas({
     }
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext("2d");
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
     if (!ctx) return;
 
     const previousState = history[history.length - 2];
@@ -181,9 +177,9 @@ export default function DrawingCanvas({
         <div className="flex items-center gap-2">
           <span>STROKE:</span>
           {[
-            { label: "Fine", size: 3 },
-            { label: "Medium", size: 5 },
-            { label: "Thick", size: 8 },
+            { label: "Fine", size: 4 },
+            { label: "Medium", size: 7 },
+            { label: "Thick", size: 11 },
           ].map((b) => (
             <button
               key={b.size}
@@ -210,21 +206,18 @@ export default function DrawingCanvas({
       </div>
 
       <div
-        className="w-full relative border border-card-border rounded-md overflow-hidden bg-white shadow-inner"
+        className="w-full relative border border-card-border rounded-md overflow-hidden bg-white shadow-inner select-none"
         style={{ touchAction: "none" }}
       >
         <canvas
           ref={canvasRef}
           width={600}
           height={200}
-          className="w-full h-[180px] cursor-crosshair block"
-          onMouseDown={startDrawing}
-          onMouseMove={draw}
-          onMouseUp={stopDrawing}
-          onMouseLeave={stopDrawing}
-          onTouchStart={startDrawing}
-          onTouchMove={draw}
-          onTouchEnd={stopDrawing}
+          className="w-full h-[180px] cursor-crosshair block touch-none"
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerUp}
         />
       </div>
     </div>

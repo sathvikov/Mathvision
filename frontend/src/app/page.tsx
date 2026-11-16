@@ -32,20 +32,28 @@ export default function Home() {
     let isMounted = true;
     const checkHealth = async () => {
       try {
-        const res = await fetch(`${API_URL}/health`, { signal: AbortSignal.timeout(3000) });
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 6000);
+        const res = await fetch(`${API_URL}/health`, {
+          signal: controller.signal,
+          cache: "no-store",
+        });
+        clearTimeout(timeoutId);
         if (res.ok) {
           const data = await res.json();
           if (isMounted) setBackendStatus(data.online ? "online" : "offline");
         } else {
           if (isMounted) setBackendStatus("offline");
         }
-      } catch {
+      } catch (err) {
         if (isMounted) setBackendStatus("offline");
       }
     };
     checkHealth();
+    const interval = setInterval(checkHealth, 8000);
     return () => {
       isMounted = false;
+      clearInterval(interval);
     };
   }, [API_URL]);
 
@@ -68,12 +76,19 @@ export default function Home() {
     }
   };
 
-  const handleLoadPreset = (example: typeof PRESET_EXAMPLES[0]) => {
+  const handleLoadPreset = async (example: typeof PRESET_EXAMPLES[0]) => {
     setInputMode("Draw");
     setActivePreset(example.label);
     setPresetUrl(example.file);
     setResult(null);
     setError(null);
+    try {
+      const res = await fetch(example.file);
+      const b = await res.blob();
+      setBlob(b);
+    } catch (e) {
+      console.warn("Preset blob fetch error:", e);
+    }
   };
 
   const handleSolve = async () => {
